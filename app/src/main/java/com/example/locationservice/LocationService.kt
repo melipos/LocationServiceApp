@@ -23,7 +23,7 @@ class LocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-
+         startForeground(1, createNotification())
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         val locationRequest = LocationRequest.Builder(
@@ -54,6 +54,27 @@ class LocationService : Service() {
         )
     }
 
+    private fun createNotification(): Notification {
+    val channelId = "location_channel"
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = NotificationChannel(
+            channelId,
+            "Location Service",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
+    }
+
+    return Notification.Builder(this, channelId)
+        .setContentTitle("Konum Servisi Çalışıyor")
+        .setContentText("Konum gönderiliyor")
+        .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+        .build()
+}
+
+    
     private fun sendLocationToServer(lat: Double, lon: Double) {
         Thread {
             try {
@@ -87,4 +108,5 @@ class LocationService : Service() {
         return null
     }
 }
+
 
