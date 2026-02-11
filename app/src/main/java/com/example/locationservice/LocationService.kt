@@ -1,13 +1,10 @@
 package com.example.locationservice
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import okhttp3.*
 import java.io.IOException
@@ -34,52 +31,47 @@ class LocationService : Service() {
             manager.createNotificationChannel(channel)
         }
 
-        val notification: Notification = Notification.Builder(this, channelId)
+        val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Location Service")
             .setContentText("Tracking location in background")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-
             .build()
 
         startForeground(1, notification)
     }
 
     private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 60000L).build()
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L).build()
 
         fusedLocationClient.requestLocationUpdates(locationRequest, object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
-                super.onLocationResult(locationResult)
                 val location = locationResult.lastLocation ?: return
-                Log.d("LocationService", "Lat: ${location.latitude}, Lon: ${location.longitude}")
-                postLocation(location.latitude, location.longitude)
+                sendLocationToServer(location.latitude, location.longitude)
             }
         }, mainLooper)
     }
 
-    private fun postLocation(lat: Double, lon: Double) {
-        val url = "https://yourserver.com/location"
-        val body = FormBody.Builder()
+    private fun sendLocationToServer(lat: Double, lon: Double) {
+        val requestBody = FormBody.Builder()
             .add("latitude", lat.toString())
             .add("longitude", lon.toString())
             .build()
 
         val request = Request.Builder()
-            .url(url)
-            .post(body)
+            .url("https://yourserver.com/location") // <-- burayı kendi sunucuna göre değiştir
+            .post(requestBody)
             .build()
 
         client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e("LocationService", "Failed to post location", e)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                Log.d("LocationService", "Location posted successfully")
-            }
+            override fun onFailure(call: Call, e: IOException) { e.printStackTrace() }
+            override fun onResponse(call: Call, response: Response) { response.close() }
         })
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-}
 
+    override fun onDestroy() {
+        super.onDestroy()
+        fusedLocationClient.removeLocationUpdates(object : LocationCallback() {})
+    }
+}
