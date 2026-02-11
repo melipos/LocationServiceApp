@@ -65,3 +65,36 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             locationRequest,
             object : LocationCallback() {
                 override fun onLocationResult(locationResult: LocationResult) {
+                    val location = locationResult.lastLocation ?: return
+                    googleMap?.let { map ->
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        map.clear()
+                        map.addMarker(MarkerOptions().position(latLng).title("You are here"))
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17f))
+                    }
+                }
+            },
+            mainLooper
+        )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mapView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mapView.onPause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mapView.onDestroy()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        mapView.onLowMemory()
+    }
+}
