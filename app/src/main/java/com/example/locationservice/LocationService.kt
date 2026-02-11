@@ -1,4 +1,5 @@
 package com.example.locationservice
+import com.example.locationservice.BuildConfig
 
 import android.app.Service
 import android.content.Intent
@@ -114,6 +115,7 @@ class LocationService : Service() {
 }
 
 }
+
 
 
 
