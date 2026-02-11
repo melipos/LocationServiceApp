@@ -60,7 +60,7 @@ class LocationService : Service() {
             .build()
 
         val request = Request.Builder()
-            .url("https://yourserver.com/location_receiver.php")
+            .url("https://yourserver.com/location_receiver.php") // kendi sunucu URL
             .post(requestBody)
             .build()
 
@@ -71,7 +71,6 @@ class LocationService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(object : LocationCallback() {})
