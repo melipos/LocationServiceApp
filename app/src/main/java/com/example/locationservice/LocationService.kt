@@ -2,6 +2,7 @@ package com.example.locationservice
 
 import android.app.Service
 import android.content.Intent
+import android.location.Location
 import android.os.IBinder
 import android.util.Log
 import com.google.android.gms.location.*
@@ -11,62 +12,81 @@ import kotlin.concurrent.thread
 
 class LocationService : Service() {
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
+    private lateinit var fusedClient: FusedLocationProviderClient
+    private lateinit var callback: LocationCallback
 
-    // 🔴 PHP DOSYANIN TAM URL'Sİ
-    private val SERVER_URL = "https://melipos.com/location_receiver/get_locations.php"
+    private val SERVER_URL = "https://melipos.com/location_receiver/konum.php"
+
+    private var lastLocation: Location? = null
+    private var lastMoveTime = System.currentTimeMillis()
 
     override fun onCreate() {
         super.onCreate()
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        fusedClient = LocationServices.getFusedLocationProviderClient(this)
 
-        val locationRequest = LocationRequest.Builder(
+        val request = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            10000 // 10 saniye
+            10000
         ).build()
 
-        locationCallback = object : LocationCallback() {
+        callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                for (location in result.locations) {
-                    val lat = location.latitude
-                    val lon = location.longitude
-
-                    Log.d("LocationService", "LAT=$lat LON=$lon")
-                    sendLocationToServer(lat, lon)
-                }
+                val location = result.lastLocation ?: return
+                processLocation(location)
             }
         }
 
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            locationCallback,
-            mainLooper
-        )
+        fusedClient.requestLocationUpdates(request, callback, mainLooper)
     }
 
-    private fun sendLocationToServer(lat: Double, lon: Double) {
+    private fun processLocation(loc: Location) {
+        val lat = loc.latitude
+        val lon = loc.longitude
+        val speed = loc.speed   // m/s
+
+        var isStop = 0
+
+        if (speed < 0.5) {
+            if (System.currentTimeMillis() - lastMoveTime > 120000) {
+                isStop = 1
+            }
+        } else {
+            lastMoveTime = System.currentTimeMillis()
+        }
+
+        lastLocation = loc
+        sendToServer(lat, lon, speed, isStop)
+    }
+
+    private fun sendToServer(
+        lat: Double,
+        lon: Double,
+        speed: Float,
+        isStop: Int
+    ) {
         thread {
             try {
                 val url = URL(SERVER_URL)
                 val conn = url.openConnection() as HttpURLConnection
 
                 conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                conn.setRequestProperty(
+                    "Content-Type",
+                    "application/x-www-form-urlencoded"
+                )
                 conn.doOutput = true
                 conn.connectTimeout = 10000
                 conn.readTimeout = 10000
 
-                val postData = "lat=$lat&lon=$lon"
+                val postData =
+                    "lat=$lat&lon=$lon&speed=$speed&stop=$isStop"
 
                 conn.outputStream.use {
                     it.write(postData.toByteArray())
                 }
 
-                val responseCode = conn.responseCode
-                Log.d("LocationService", "SERVER RESPONSE: $responseCode")
-
+                Log.d("LocationService", "POST OK ${conn.responseCode}")
                 conn.disconnect()
 
             } catch (e: Exception) {
@@ -76,7 +96,7 @@ class LocationService : Service() {
     }
 
     override fun onDestroy() {
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        fusedClient.removeLocationUpdates(callback)
         super.onDestroy()
     }
 
