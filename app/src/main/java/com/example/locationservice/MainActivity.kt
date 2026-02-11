@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val intent = Intent(this, LocationService::class.java)
-        startService(intent)
+        startForegroundService(intent)
 
         // MapView init
         mapView = findViewById(R.id.mapView)
@@ -110,6 +110,7 @@ private fun startLocationUpdates() {
     override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
     override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
 }
+
 
 
 
