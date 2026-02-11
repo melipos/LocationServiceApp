@@ -1,7 +1,7 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.locationservice">
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
     <uses-permission android:name="android.permission.INTERNET"/>
 
@@ -9,15 +9,6 @@
         android:allowBackup="true"
         android:label="LocationServiceApp"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDCzRxhdJMUwy_RL3-uVD9gNlRq58FEzL8"/>
-
-        <service
-            android:name=".LocationService"
-            android:foregroundServiceType="location"
-            android:exported="false"/>
 
         <activity
             android:name=".MainActivity"
@@ -28,7 +19,10 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".LocationService"
+            android:foregroundServiceType="location"
+            android:exported="false"/>
     </application>
 
 </manifest>
-
