@@ -37,7 +37,8 @@ class LocationService : Service() {
         val notification: Notification = Notification.Builder(this, channelId)
             .setContentTitle("Location Service")
             .setContentText("Tracking location in background")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+
             .build()
 
         startForeground(1, notification)
@@ -81,3 +82,4 @@ class LocationService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
