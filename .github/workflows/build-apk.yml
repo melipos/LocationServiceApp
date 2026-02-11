@@ -19,6 +19,9 @@ jobs:
         distribution: 'temurin'
         java-version: 17
 
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew   # <-- burayı ekledik
+
     - name: Download Android SDK
       uses: android-actions/setup-android@v2
       with:
@@ -29,7 +32,7 @@ jobs:
       run: ./gradlew assembleRelease
 
     - name: Upload APK
-      uses: actions/upload-artifact@v4   # <-- v4 olarak güncelledik
+      uses: actions/upload-artifact@v4
       with:
         name: LocationServiceApp-release.apk
         path: app/build/outputs/apk/release/app-release.apk
