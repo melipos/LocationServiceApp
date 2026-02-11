@@ -10,6 +10,12 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+
+
 class LocationService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -17,7 +23,7 @@ class LocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-
+        startForeground(1, createNotification())
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         val locationRequest = LocationRequest.Builder(
@@ -47,6 +53,27 @@ class LocationService : Service() {
             Looper.getMainLooper()
         )
     }
+
+    private fun createNotification(): Notification {
+    val channelId = "location_channel"
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = NotificationChannel(
+            channelId,
+            "Location Service",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
+    }
+
+    return Notification.Builder(this, channelId)
+        .setContentTitle("Konum Servisi Çalışıyor")
+        .setContentText("Konum gönderiliyor")
+        .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+        .build()
+}
+
 
     private fun sendLocationToServer(lat: Double, lon: Double) {
         Thread {
@@ -81,3 +108,4 @@ class LocationService : Service() {
         return null
     }
 }
+
