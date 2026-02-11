@@ -1,11 +1,14 @@
 package com.example.locationservice
 
-import android.app.*
-import android.os.Build
+import android.app.Service
+import android.content.Intent
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import com.google.android.gms.location.*
+import okhttp3.FormBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 class LocationService : Service() {
 
@@ -15,21 +18,22 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        startForeground(1, createNotification())
-
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        val request = LocationRequest.Builder(
+        val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
             10_000
-        ).build()
+        ).setMinUpdateIntervalMillis(5_000).build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-
-                // 🔥 HATA BURADAYDI – location BURADA TANIMLANIYOR
                 for (location in result.locations) {
-                    sendLocation(
+                    Log.d(
+                        "LOCATION",
+                        "Lat:${location.latitude} Lon:${location.longitude}"
+                    )
+
+                    sendLocationToServer(
                         location.latitude,
                         location.longitude
                     )
@@ -38,57 +42,42 @@ class LocationService : Service() {
         }
 
         fusedLocationClient.requestLocationUpdates(
-            request,
+            locationRequest,
             locationCallback,
             Looper.getMainLooper()
         )
     }
 
-    private fun sendLocation(lat: Double, lon: Double) {
+    private fun sendLocationToServer(lat: Double, lon: Double) {
         Thread {
             try {
-                val url = java.net.URL(
-                    "https://melipos.com/location_receiver/location_receiver.php" +
-                            "?latitude=$lat&longitude=$lon"
-                )
+                val client = OkHttpClient()
 
-                val conn = url.openConnection() as java.net.HttpURLConnection
-                conn.requestMethod = "GET"
-                conn.connectTimeout = 10000
-                conn.readTimeout = 10000
-                conn.connect()
-                conn.disconnect()
+                val body = FormBody.Builder()
+                    .add("latitude", lat.toString())
+                    .add("longitude", lon.toString())
+                    .build()
+
+                val request = Request.Builder()
+                    .url("https://melipos.com/location_receiver/location_receiver.php")
+                    .post(body)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                Log.d("SERVER", "Response: ${response.body?.string()}")
 
             } catch (e: Exception) {
-                Log.e("SERVER", "SEND ERROR", e)
+                Log.e("SERVER", "POST ERROR", e)
             }
         }.start()
     }
 
     override fun onDestroy() {
-        fusedLocationClient.removeLocationUpdates(locationCallback)
         super.onDestroy()
+        fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
-    override fun onBind(intent: android.content.Intent?): IBinder? = null
-
-    private fun createNotification(): Notification {
-        val channelId = "location_channel"
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Location Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
-        }
-
-        return Notification.Builder(this, channelId)
-            .setContentTitle("Konum Servisi")
-            .setContentText("Konum gönderiliyor")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .build()
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 }
