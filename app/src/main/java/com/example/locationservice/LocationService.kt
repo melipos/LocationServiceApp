@@ -3,47 +3,38 @@ package com.example.locationservice
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import com.google.android.gms.location.*
-import okhttp3.FormBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.os.Build
-
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.concurrent.thread
 
 class LocationService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
 
+    // 🔴 PHP DOSYANIN TAM URL'Sİ
+    private val SERVER_URL = "https://melipos.com/location_receiver/get_locations.php"
+
     override fun onCreate() {
         super.onCreate()
-        startForeground(1, createNotification())
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
-            10_000
-        ).setMinUpdateIntervalMillis(5_000).build()
+            10000 // 10 saniye
+        ).build()
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
-                  
-                    Log.d(
-                        "LOCATION",
-                        "Lat:${location.latitude} Lon:${location.longitude}"
-                    
-                    }
-                    sendLocationToServer(
-                        location.latitude,
-                        location.longitude
-                    )
+                    val lat = location.latitude
+                    val lon = location.longitude
+
+                    Log.d("LocationService", "LAT=$lat LON=$lon")
+                    sendLocationToServer(lat, lon)
                 }
             }
         }
@@ -51,71 +42,43 @@ class LocationService : Service() {
         fusedLocationClient.requestLocationUpdates(
             locationRequest,
             locationCallback,
-            Looper.getMainLooper()
+            mainLooper
         )
     }
-
-    private fun createNotification(): Notification {
-    val channelId = "location_channel"
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val channel = NotificationChannel(
-            channelId,
-            "Location Service",
-            NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
-    }
-
-    return Notification.Builder(this, channelId)
-        .setContentTitle("Konum Servisi Çalışıyor")
-        .setContentText("Konum gönderiliyor")
-        .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-        .build()
-}
-
 
     private fun sendLocationToServer(lat: Double, lon: Double) {
-        Thread {
+        thread {
             try {
-                val client = OkHttpClient()
+                val url = URL(SERVER_URL)
+                val conn = url.openConnection() as HttpURLConnection
 
-                val body = FormBody.Builder()
-                    .add("latitude", lat.toString())
-                    .add("longitude", lon.toString())
-                    .build()
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                conn.doOutput = true
+                conn.connectTimeout = 10000
+                conn.readTimeout = 10000
 
-                val request = Request.Builder()
-                    .url("https://melipos.com/location_receiver/location_receiver.php")
-                    .post(body)
-                    .build()
+                val postData = "lat=$lat&lon=$lon"
 
-                val response = client.newCall(request).execute()
-                Log.d("SERVER", "Response: ${response.body?.string()}")
+                conn.outputStream.use {
+                    it.write(postData.toByteArray())
+                }
+
+                val responseCode = conn.responseCode
+                Log.d("LocationService", "SERVER RESPONSE: $responseCode")
+
+                conn.disconnect()
 
             } catch (e: Exception) {
-                Log.e("SERVER", "POST ERROR", e)
+                Log.e("LocationService", "POST ERROR", e)
             }
-        }.start()
+        }
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    return START_STICKY
+    override fun onBind(intent: Intent?): IBinder? = null
 }
-
-}
-
-
-
-
-
