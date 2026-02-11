@@ -24,14 +24,12 @@ android {
         jvmTarget = "17"
     }
 
-buildTypes {
-    release {
-        minifyEnabled false
-        signingConfig null   // Eğer imzalama yapmayacaksan null bırak
-        debuggable false
+    buildTypes {
+        debug {
+            minifyEnabled false
+            debuggable true
+        }
     }
-}
-
 }
 
 dependencies {
@@ -42,6 +40,3 @@ dependencies {
     implementation 'com.google.android.gms:play-services-maps:18.1.0'
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
 }
-
-
-
