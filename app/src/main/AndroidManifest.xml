@@ -12,7 +12,9 @@
         android:allowBackup="true"
         android:label="LocationServiceApp"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-        android:networkSecurityConfig="@xml/network_security_config">
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="false">
+
         
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -34,6 +36,7 @@
     </application>
 
 </manifest>
+
 
 
 
