@@ -60,7 +60,7 @@ class LocationService : Service() {
             .build()
 
         val request = Request.Builder()
-            .url("https://yourserver.com/location_receiver.php") // kendi sunucu URL
+            .url("https://melipos.com/location_receiver/location_receiver.php") // kendi sunucu URL
             .post(requestBody)
             .build()
 
@@ -76,3 +76,4 @@ class LocationService : Service() {
         fusedLocationClient.removeLocationUpdates(object : LocationCallback() {})
     }
 }
+
