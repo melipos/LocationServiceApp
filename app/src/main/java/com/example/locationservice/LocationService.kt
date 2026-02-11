@@ -33,17 +33,11 @@ class LocationService : Service() {
 
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                for (location in result.locations) {
-                    Log.d(
-                        "LOCATION",
-                        "Lat:${location.latitude} Lon:${location.longitude}"
-                    )
+            sendLocationToServerSimple(
+            location.latitude,
+            location.longitude
+            )
 
-                    sendLocationToServer(
-                        location.latitude,
-                        location.longitude
-                    )
-                }
             }
         }
 
@@ -75,29 +69,29 @@ class LocationService : Service() {
 }
 
     
-    private fun sendLocationToServer(lat: Double, lon: Double) {
-        Thread {
-            try {
-                val client = OkHttpClient()
+    private fun sendLocationToServerSimple(lat: Double, lon: Double) {
+    Thread {
+        try {
+            val url = java.net.URL(
+                "https://siteadresin.com/location_receiver.php" +
+                        "?latitude=$lat&longitude=$lon"
+            )
 
-                val body = FormBody.Builder()
-                    .add("latitude", lat.toString())
-                    .add("longitude", lon.toString())
-                    .build()
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 10000
+            conn.readTimeout = 10000
+            conn.connect()
 
-                val request = Request.Builder()
-                    .url("https://melipos.com/location_receiver/location_receiver.php")
-                    .post(body)
-                    .build()
+            val code = conn.responseCode
+            conn.disconnect()
 
-                val response = client.newCall(request).execute()
-                Log.d("SERVER", "Response: ${response.body?.string()}")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }.start()
+}
 
-            } catch (e: Exception) {
-                Log.e("SERVER", "POST ERROR", e)
-            }
-        }.start()
-    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -108,5 +102,6 @@ class LocationService : Service() {
         return null
     }
 }
+
 
 
