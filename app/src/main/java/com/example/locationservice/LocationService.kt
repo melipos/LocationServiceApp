@@ -23,10 +23,8 @@ class LocationService : Service() {
 
     private fun startForegroundService() {
         val channelId = "location_service_channel"
-        val channelName = "Location Service"
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(channelId, "Location Service", NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
@@ -43,12 +41,16 @@ class LocationService : Service() {
     private fun startLocationUpdates() {
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L).build()
 
-        fusedLocationClient.requestLocationUpdates(locationRequest, object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                val location = locationResult.lastLocation ?: return
-                sendLocationToServer(location.latitude, location.longitude)
-            }
-        }, mainLooper)
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            object : LocationCallback() {
+                override fun onLocationResult(locationResult: LocationResult) {
+                    val location = locationResult.lastLocation ?: return
+                    sendLocationToServer(location.latitude, location.longitude)
+                }
+            },
+            mainLooper
+        )
     }
 
     private fun sendLocationToServer(lat: Double, lon: Double) {
@@ -58,7 +60,7 @@ class LocationService : Service() {
             .build()
 
         val request = Request.Builder()
-            .url("https://melipos.com/location_receiver/location_receiver.php") // <-- burayı kendi sunucuna göre değiştir
+            .url("https://yourserver.com/location_receiver.php")
             .post(requestBody)
             .build()
 
@@ -75,4 +77,3 @@ class LocationService : Service() {
         fusedLocationClient.removeLocationUpdates(object : LocationCallback() {})
     }
 }
-
