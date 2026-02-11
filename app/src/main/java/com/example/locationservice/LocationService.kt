@@ -34,11 +34,12 @@ class LocationService : Service() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
+                    if (BuildConfig.DEBUG) {
                     Log.d(
                         "LOCATION",
                         "Lat:${location.latitude} Lon:${location.longitude}"
                     )
-
+                    }
                     sendLocationToServer(
                         location.latitude,
                         location.longitude
@@ -108,4 +109,5 @@ class LocationService : Service() {
         return null
     }
 }
+
 
