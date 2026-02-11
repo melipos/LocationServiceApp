@@ -19,6 +19,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var mapView: MapView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var googleMap: GoogleMap? = null
+    private var isFirstFix = true
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,9 +87,14 @@ private fun startLocationUpdates() {
                     map.addMarker(
                         MarkerOptions().position(latLng).title("Konumun")
                     )
-                    map.animateCamera(
-                        CameraUpdateFactory.newLatLngZoom(latLng, 17f)
-                    )
+
+                    // 📌 SADECE İLK KONUMDA YAKINLAŞ
+                    if (isFirstFix) {
+                        map.animateCamera(
+                            CameraUpdateFactory.newLatLngZoom(latLng, 18f)
+                        )
+                        isFirstFix = false
+                    }
                 }
             }
         },
@@ -95,12 +102,12 @@ private fun startLocationUpdates() {
     )
 }
 
-
     // MapView lifecycle methods
     override fun onResume() { super.onResume(); mapView.onResume() }
     override fun onPause() { super.onPause(); mapView.onPause() }
     override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
     override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
 }
+
 
 
