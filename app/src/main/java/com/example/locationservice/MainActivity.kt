@@ -54,10 +54,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         requestPermissionLauncher.launch(permissions.toTypedArray())
     }
 
-    override fun onMapReady(map: GoogleMap) {
-        googleMap = map
-        googleMap?.uiSettings?.isZoomControlsEnabled = true
+override fun onMapReady(map: GoogleMap) {
+    googleMap = map
+    googleMap?.uiSettings?.isZoomControlsEnabled = true
+
+    try {
+        googleMap?.isMyLocationEnabled = true
+    } catch (e: SecurityException) {
+        e.printStackTrace()
     }
+}
+
 
     private fun startLocationUpdates() {
         val locationRequest = LocationRequest.Builder(
@@ -88,3 +95,4 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
     override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
 }
+
