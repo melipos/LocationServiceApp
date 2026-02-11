@@ -24,15 +24,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // MapView init
         mapView = findViewById(R.id.mapView)
         mapView.onCreate(savedInstanceState)
         mapView.getMapAsync(this)
 
-        // Fused Location Client
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        // İzinleri sor ve servis + konum güncellemeyi başlat
         requestPermissions()
     }
 
@@ -45,7 +41,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { result ->
-            // Tüm izinler verilmişse
             if (result.values.all { it }) {
                 startService(Intent(this, LocationService::class.java))
                 startLocationUpdates()
@@ -70,37 +65,3 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             locationRequest,
             object : LocationCallback() {
                 override fun onLocationResult(locationResult: LocationResult) {
-                    val location = locationResult.lastLocation ?: return
-                    googleMap?.let { map ->
-                        val latLng = LatLng(location.latitude, location.longitude)
-                        map.clear()
-                        map.addMarker(MarkerOptions().position(latLng).title("You are here"))
-                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17f))
-                    }
-                }
-            },
-            mainLooper
-        )
-    }
-
-    // MapView lifecycle methods
-    override fun onResume() {
-        super.onResume()
-        mapView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        mapView.onPause()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        mapView.onDestroy()
-    }
-
-    override fun onLowMemory() {
-        super.onLowMemory()
-        mapView.onLowMemory()
-    }
-}
