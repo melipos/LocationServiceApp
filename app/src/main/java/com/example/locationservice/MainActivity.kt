@@ -29,4 +29,78 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         mapView.onCreate(savedInstanceState)
         mapView.getMapAsync(this)
 
-        // Fused Loc
+        // Fused Location Client
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // İzinleri sor ve servis + konum güncellemeyi başlat
+        requestPermissions()
+    }
+
+    private fun requestPermissions() {
+        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+
+        val requestPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { result ->
+            // Tüm izinler verilmişse
+            if (result.values.all { it }) {
+                startService(Intent(this, LocationService::class.java))
+                startLocationUpdates()
+            }
+        }
+
+        requestPermissionLauncher.launch(permissions.toTypedArray())
+    }
+
+    override fun onMapReady(map: GoogleMap) {
+        googleMap = map
+        googleMap?.uiSettings?.isZoomControlsEnabled = true
+    }
+
+    private fun startLocationUpdates() {
+        val locationRequest = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            5000L
+        ).build()
+
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            object : LocationCallback() {
+                override fun onLocationResult(locationResult: LocationResult) {
+                    val location = locationResult.lastLocation ?: return
+                    googleMap?.let { map ->
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        map.clear()
+                        map.addMarker(MarkerOptions().position(latLng).title("You are here"))
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17f))
+                    }
+                }
+            },
+            mainLooper
+        )
+    }
+
+    // MapView lifecycle methods
+    override fun onResume() {
+        super.onResume()
+        mapView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mapView.onPause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mapView.onDestroy()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        mapView.onLowMemory()
+    }
+}
