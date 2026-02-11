@@ -1,5 +1,4 @@
 package com.example.locationservice
-import com.example.locationservice.BuildConfig
 
 import android.app.Service
 import android.content.Intent
@@ -35,11 +34,11 @@ class LocationService : Service() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
-                    if (BuildConfig.DEBUG) {
+                  
                     Log.d(
                         "LOCATION",
                         "Lat:${location.latitude} Lon:${location.longitude}"
-                    )
+                    
                     }
                     sendLocationToServer(
                         location.latitude,
@@ -115,6 +114,7 @@ class LocationService : Service() {
 }
 
 }
+
 
 
 
