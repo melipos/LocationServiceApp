@@ -24,10 +24,11 @@ android {
         jvmTarget = "17"
     }
 
-    buildTypes {
-        debug {
+buildTypes {
+        release {
+            debuggable false
             minifyEnabled false
-            debuggable true
+            shrinkResources false
         }
     }
 }
@@ -40,3 +41,4 @@ dependencies {
     implementation 'com.google.android.gms:play-services-maps:18.1.0'
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
 }
+
