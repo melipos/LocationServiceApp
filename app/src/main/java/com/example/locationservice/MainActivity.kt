@@ -24,11 +24,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // MapView init
         mapView = findViewById(R.id.mapView)
         mapView.onCreate(savedInstanceState)
         mapView.getMapAsync(this)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // İzinleri sor ve servis + konum güncellemeyi başlat
         requestPermissions()
     }
 
@@ -41,6 +44,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { result ->
+            // Tüm izinler verilmişse
             if (result.values.all { it }) {
                 startService(Intent(this, LocationService::class.java))
                 startLocationUpdates()
@@ -78,23 +82,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         )
     }
 
-    override fun onResume() {
-        super.onResume()
-        mapView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        mapView.onPause()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        mapView.onDestroy()
-    }
-
-    override fun onLowMemory() {
-        super.onLowMemory()
-        mapView.onLowMemory()
-    }
+    // MapView lifecycle methods
+    override fun onResume() { super.onResume(); mapView.onResume() }
+    override fun onPause() { super.onPause(); mapView.onPause() }
+    override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
+    override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
 }
