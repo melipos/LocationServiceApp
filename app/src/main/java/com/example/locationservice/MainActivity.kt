@@ -66,28 +66,35 @@ override fun onMapReady(map: GoogleMap) {
 }
 
 
-    private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            5000L
-        ).build()
+private fun startLocationUpdates() {
+    val locationRequest = LocationRequest.Builder(
+        Priority.PRIORITY_HIGH_ACCURACY,
+        3000L
+    ).build()
 
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            object : LocationCallback() {
-                override fun onLocationResult(locationResult: LocationResult) {
-                    val location = locationResult.lastLocation ?: return
-                    googleMap?.let { map ->
-                        val latLng = LatLng(location.latitude, location.longitude)
-                        map.clear()
-                        map.addMarker(MarkerOptions().position(latLng).title("You are here"))
-                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17f))
-                    }
+    fusedLocationClient.requestLocationUpdates(
+        locationRequest,
+        object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                val location = locationResult.lastLocation ?: return
+
+                val latLng = LatLng(location.latitude, location.longitude)
+
+                googleMap?.let { map ->
+                    map.clear()
+                    map.addMarker(
+                        MarkerOptions().position(latLng).title("Konumun")
+                    )
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(latLng, 17f)
+                    )
                 }
-            },
-            mainLooper
-        )
-    }
+            }
+        },
+        mainLooper
+    )
+}
+
 
     // MapView lifecycle methods
     override fun onResume() { super.onResume(); mapView.onResume() }
@@ -95,4 +102,5 @@ override fun onMapReady(map: GoogleMap) {
     override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
     override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
 }
+
 
