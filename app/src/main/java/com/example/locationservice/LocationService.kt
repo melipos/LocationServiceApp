@@ -53,27 +53,29 @@ class LocationService : Service() {
         )
     }
 
-    private fun sendLocationToServer(lat: Double, lon: Double) {
-        val requestBody = FormBody.Builder()
-            .add("latitude", lat.toString())
-            .add("longitude", lon.toString())
-            .build()
+ private fun sendLocationToServer(lat: Double, lon: Double) {
+    Thread {
+        try {
+            val client = OkHttpClient()
 
-        val request = Request.Builder()
-            .url("https://melipos.com/location_receiver/location_receiver.php") // kendi sunucu URL
-            .post(requestBody)
-            .build()
+            val body = FormBody.Builder()
+                .add("latitude", lat.toString())
+                .add("longitude", lon.toString())
+                .build()
 
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) { e.printStackTrace() }
-            override fun onResponse(call: Call, response: Response) { response.close() }
-        })
-    }
+            val request = Request.Builder()
+                .url("https://melipos.com/location_receiver/location_receiver.php")
+                .post(body)
+                .build()
 
-    override fun onBind(intent: Intent?): IBinder? = null
-    override fun onDestroy() {
-        super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(object : LocationCallback() {})
-    }
+            val response = client.newCall(request).execute()
+
+            Log.d("SERVER", "Response: ${response.body?.string()}")
+
+        } catch (e: Exception) {
+            Log.e("SERVER", "POST ERROR", e)
+        }
+    }.start()
 }
+
 
