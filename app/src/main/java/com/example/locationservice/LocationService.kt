@@ -44,7 +44,7 @@ class LocationService : Service() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Konum Servisi")
             .setContentText("Konum servisiniz çalışıyor")
-            .setSmallIcon(R.drawable.ic_location)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .build()
         startForeground(1, notification)
@@ -113,3 +113,4 @@ class LocationService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
