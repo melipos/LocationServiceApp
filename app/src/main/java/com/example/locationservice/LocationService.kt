@@ -1,111 +1,117 @@
 package com.example.locationservice
 
-import android.app.Service
+import android.Manifest
+import android.app.*
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
+import android.os.Build
 import android.os.IBinder
 import android.os.Looper
-import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
-import okhttp3.FormBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.os.Build
-
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 class LocationService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(1, createNotification())
+
+        // --- Başlangıç: Foreground notification (Android 8+) ---
+        val channelId = "LocationServiceChannel"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Konum Servisi",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Konum Servisi")
+            .setContentText("Konum servisiniz çalışıyor")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setOngoing(true)
+            .build()
+
+        startForeground(1, notification)
+        // --- Bitiş: Foreground notification ---
+
+        // --- Eski çalışan kod ---
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        startLocationUpdates()
+    }
 
-        val locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            10_000
-        ).setMinUpdateIntervalMillis(5_000).build()
+    private fun startLocationUpdates() {
+        val locationRequest = LocationRequest.create().apply {
+            interval = 5000
+            fastestInterval = 3000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
 
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                for (location in result.locations) {
-                    Log.d(
-                        "LOCATION",
-                        "Lat:${location.latitude} Lon:${location.longitude}"
-                    )
-
-                    sendLocationToServer(
-                        location.latitude,
-                        location.longitude
-                    )
-                }
-            }
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
         }
 
         fusedLocationClient.requestLocationUpdates(
             locationRequest,
-            locationCallback,
+            object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    result.locations.forEach { location ->
+                        saveLocationToFile(location)
+                        sendLocationToServer(location)
+                    }
+                }
+            },
             Looper.getMainLooper()
         )
     }
 
-    private fun createNotification(): Notification {
-    val channelId = "location_channel"
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val channel = NotificationChannel(
-            channelId,
-            "Location Service",
-            NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
+    private fun saveLocationToFile(location: Location) {
+        try {
+            val file = File(filesDir, "location.txt")
+            val output = FileOutputStream(file, true)
+            output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
+            output.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
-    return Notification.Builder(this, channelId)
-        .setContentTitle("Konum Servisi Çalışıyor")
-        .setContentText("Konum gönderiliyor")
-        .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-        .build()
-}
-
-
-    private fun sendLocationToServer(lat: Double, lon: Double) {
+    private fun sendLocationToServer(location: Location) {
         Thread {
             try {
-                val client = OkHttpClient()
-
-                val body = FormBody.Builder()
-                    .add("latitude", lat.toString())
-                    .add("longitude", lon.toString())
-                    .build()
-
-                val request = Request.Builder()
-                    .url("https://melipos.com/location_receiver/location_receiver.php")
-                    .post(body)
-                    .build()
-
-                val response = client.newCall(request).execute()
-                Log.d("SERVER", "Response: ${response.body?.string()}")
-
+                val url = URL("https://melipos.com/location_receive/konum.php") // Kendi URL’in
+                val postData = "lat=${location.latitude}&lon=${location.longitude}"
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doOutput = true
+                conn.outputStream.write(postData.toByteArray())
+                conn.outputStream.flush()
+                conn.outputStream.close()
+                conn.inputStream.close()
             } catch (e: Exception) {
-                Log.e("SERVER", "POST ERROR", e)
+                e.printStackTrace()
             }
         }.start()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-    }
-
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 }
-
