@@ -16,42 +16,23 @@ import java.util.*
 
 class LocationService : Service() {
 
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
+    private lateinit var fusedClient: FusedLocationProviderClient
     private lateinit var userId: String
 
     override fun onCreate() {
         super.onCreate()
 
-        // 🔑 Telefona özel ID
         userId = Settings.Secure.getString(
             applicationContext.contentResolver,
             Settings.Secure.ANDROID_ID
         )
 
-        createNotification()
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        val request = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            5000L
-        ).setMinUpdateDistanceMeters(5f).build()
-
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                val location = result.lastLocation ?: return
-                sendLocation(location)
-            }
-        }
-
-        fusedLocationClient.requestLocationUpdates(
-            request,
-            locationCallback,
-            mainLooper
-        )
+        fusedClient = LocationServices.getFusedLocationProviderClient(this)
+        startForeground(1, buildNotification())
+        startLocationUpdates()
     }
 
-    private fun createNotification() {
+    private fun buildNotification(): Notification {
         val channelId = "location_channel"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -64,51 +45,55 @@ class LocationService : Service() {
                 .createNotificationChannel(channel)
         }
 
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Konum Takibi Aktif")
-            .setContentText("Konum gönderiliyor")
-            .setSmallIcon(R.drawable.ic_location)
+        return NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Konum aktif")
+            .setContentText("Arka planda konum gönderiliyor")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setOngoing(true)
             .build()
+    }
 
-        startForeground(1, notification)
+    private fun startLocationUpdates() {
+        val request = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            5000
+        ).build()
+
+        fusedClient.requestLocationUpdates(
+            request,
+            object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    val loc = result.lastLocation ?: return
+                    sendLocation(loc)
+                }
+            },
+            mainLooper
+        )
     }
 
     private fun sendLocation(location: Location) {
         Thread {
             try {
+                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                val time = sdf.format(Date())
+
+                val postData =
+                    "uid=$userId&lat=${location.latitude}&lon=${location.longitude}&speed=${location.speed}&time=$time"
+
                 val url = URL("https://melipos.com/location_receiver/konum.php")
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.doOutput = true
 
-                val time = SimpleDateFormat(
-                    "yyyy-MM-dd HH:mm:ss",
-                    Locale.getDefault()
-                ).format(Date())
-
-                val data = "uid=$userId" +
-                        "&lat=${location.latitude}" +
-                        "&lon=${location.longitude}" +
-                        "&speed=${location.speed}" +
-                        "&time=$time"
-
                 val writer = OutputStreamWriter(conn.outputStream)
-                writer.write(data)
+                writer.write(postData)
                 writer.flush()
                 writer.close()
 
                 conn.inputStream.close()
-                conn.disconnect()
-
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
             }
         }.start()
-    }
-
-    override fun onDestroy() {
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-        super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
