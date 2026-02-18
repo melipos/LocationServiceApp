@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 33+ için
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 33+
             permissions.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
         }
 
