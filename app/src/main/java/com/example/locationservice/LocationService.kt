@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
-import android.os.Looper
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
@@ -44,18 +43,17 @@ class LocationService : Service() {
             .build()
 
         // --- Runtime izin kontrolü ---
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.FOREGROUND_SERVICE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            stopSelf() // İzin yoksa servis açılmaz, crash olmaz
+            stopSelf()
             return
         }
 
         startForeground(1, notification)
-        // --- Foreground notification bitti ---
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         startLocationUpdates()
@@ -90,7 +88,7 @@ class LocationService : Service() {
                     }
                 }
             },
-            Looper.getMainLooper()
+            mainLooper
         )
     }
 
