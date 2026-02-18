@@ -2,6 +2,7 @@ package com.example.locationservice
 
 import android.app.*
 import android.content.Intent
+import android.location.Geocoder
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
@@ -11,6 +12,7 @@ import com.google.android.gms.location.*
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -71,19 +73,52 @@ class LocationService : Service() {
         )
     }
 
+    private fun getAddress(lat: Double, lon: Double): String {
+        return try {
+            val geocoder = Geocoder(this, Locale("tr"))
+            val list = geocoder.getFromLocation(lat, lon, 1)
+
+            if (!list.isNullOrEmpty()) {
+                val a = list[0]
+                listOfNotNull(
+                    a.thoroughfare,
+                    a.subThoroughfare,
+                    a.subLocality,
+                    a.locality
+                ).joinToString(", ")
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
     private fun sendLocation(location: Location) {
         Thread {
             try {
                 val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
                 val time = sdf.format(Date())
 
+                val address = getAddress(
+                    location.latitude,
+                    location.longitude
+                )
+
                 val postData =
-                    "uid=$userId&lat=${location.latitude}&lon=${location.longitude}&speed=${location.speed}&time=$time"
+                    "uid=$userId" +
+                    "&lat=${location.latitude}" +
+                    "&lon=${location.longitude}" +
+                    "&speed=${location.speed}" +
+                    "&time=$time" +
+                    "&address=${URLEncoder.encode(address, "UTF-8")}"
 
                 val url = URL("https://melipos.com/location_receiver/konum.php")
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.doOutput = true
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
 
                 val writer = OutputStreamWriter(conn.outputStream)
                 writer.write(postData)
