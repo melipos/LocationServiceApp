@@ -14,6 +14,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import android.os.PowerManager
 
 class LocationService : Service() {
 
@@ -113,4 +114,5 @@ class LocationService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
 
