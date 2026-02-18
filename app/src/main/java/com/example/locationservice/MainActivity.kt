@@ -1,18 +1,35 @@
 package com.example.locationservice
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import android.provider.Settings
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var webView: WebView
+
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 🔹 WebView oluştur (beyaz ekran yerine)
+        webView = WebView(this)
+        setContentView(webView)
+
+        webView.webViewClient = WebViewClient()
+        webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
+        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
         requestPermissions()
     }
@@ -34,9 +51,7 @@ class MainActivity : AppCompatActivity() {
             ActivityResultContracts.RequestMultiplePermissions()
         ) { result ->
             if (result.values.all { it }) {
-                startForegroundService(
-                    Intent(this, LocationService::class.java)
-                )
+                startTracking()
             }
         }
 
@@ -47,9 +62,25 @@ class MainActivity : AppCompatActivity() {
         if (needRequest) {
             launcher.launch(permissions.toTypedArray())
         } else {
-            startForegroundService(
-                Intent(this, LocationService::class.java)
-            )
+            startTracking()
         }
+    }
+
+    private fun startTracking() {
+        // 🔹 Foreground service başlat
+        startForegroundService(
+            Intent(this, LocationService::class.java)
+        )
+
+        // 🔹 Cihaza özel UID
+        val uid = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ANDROID_ID
+        )
+
+        // 🔹 Haritayı yükle
+        webView.loadUrl(
+            "https://melipos.com/location_receiver/map.html?uid=$uid"
+        )
     }
 }
