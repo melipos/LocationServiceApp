@@ -25,14 +25,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // MapView init
         mapView = findViewById(R.id.mapView)
         mapView.onCreate(savedInstanceState)
         mapView.getMapAsync(this)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        // Runtime izinleri sor ve servis + konum güncellemeyi başlat
         requestPermissions()
     }
 
@@ -41,28 +39,23 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 33+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
         }
 
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { result ->
-            // Tüm izinler verilmişse
             if (result.values.all { it }) {
-                // 🔹 Servisi başlat
                 val intent = Intent(this, LocationService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     startForegroundService(intent)
                 } else {
                     startService(intent)
                 }
-
-                // 🔹 Konum güncellemelerini başlat
                 startLocationUpdates()
             }
         }
@@ -73,7 +66,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(map: GoogleMap) {
         googleMap = map
         googleMap?.uiSettings?.isZoomControlsEnabled = true
-
         try {
             googleMap?.isMyLocationEnabled = true
         } catch (e: SecurityException) {
@@ -92,20 +84,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             object : LocationCallback() {
                 override fun onLocationResult(locationResult: LocationResult) {
                     val location = locationResult.lastLocation ?: return
-
                     val latLng = LatLng(location.latitude, location.longitude)
 
                     googleMap?.let { map ->
                         map.clear()
-                        map.addMarker(
-                            MarkerOptions().position(latLng).title("Konumun")
-                        )
-
-                        // 📌 SADECE İLK KONUMDA YAKINLAŞ
+                        map.addMarker(MarkerOptions().position(latLng).title("Konumun"))
                         if (isFirstFix) {
-                            map.animateCamera(
-                                CameraUpdateFactory.newLatLngZoom(latLng, 18f)
-                            )
+                            map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18f))
                             isFirstFix = false
                         }
                     }
@@ -115,7 +100,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         )
     }
 
-    // MapView lifecycle methods
     override fun onResume() { super.onResume(); mapView.onResume() }
     override fun onPause() { super.onPause(); mapView.onPause() }
     override fun onDestroy() { super.onDestroy(); mapView.onDestroy() }
