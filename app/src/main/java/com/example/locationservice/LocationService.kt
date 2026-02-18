@@ -5,9 +5,7 @@ import android.app.*
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
-import android.os.Build
-import android.os.IBinder
-import android.util.Log
+import android.os.*
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
@@ -19,30 +17,27 @@ import java.net.URL
 class LocationService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private val channelId = "LocationServiceChannel"
+    private val channelId = "location_service"
 
     override fun onCreate() {
         super.onCreate()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(channelId, "Konum Servisi", NotificationManager.IMPORTANCE_LOW)
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+            val channel = NotificationChannel(
+                channelId,
+                "Konum Servisi",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(channel)
         }
 
         val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Konum Servisi")
-            .setContentText("Konum servisiniz çalışıyor")
+            .setContentTitle("Konum Takibi")
+            .setContentText("Konum gönderiliyor")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .build()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ActivityCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            stopSelf()
-            return
-        }
 
         startForeground(1, notification)
 
@@ -51,58 +46,50 @@ class LocationService : Service() {
     }
 
     private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.create().apply {
-            interval = 5000
-            fastestInterval = 3000
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        }
+        if (
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) return
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return
-        }
+        val request = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            5000
+        ).build()
 
         fusedLocationClient.requestLocationUpdates(
-            locationRequest,
+            request,
             object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
-                    result.locations.forEach { location ->
-                        saveLocationToFile(location)
-                        sendLocationToServer(location)
-                    }
+                    val location = result.lastLocation ?: return
+                    saveToFile(location)
+                    postLocation(location)
                 }
             },
             mainLooper
         )
     }
 
-    private fun saveLocationToFile(location: Location) {
-        try {
-            val file = File(filesDir, "location.txt") // Private storage, görünürlük şart değil
-            val output = FileOutputStream(file, true)
-            output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
-            output.close()
-            Log.d("LocationService", "location.txt oluşturuldu: ${file.absolutePath}")
-        } catch (e: Exception) {
-            e.printStackTrace()
+    private fun saveToFile(location: Location) {
+        val file = File(filesDir, "location.txt")
+        val line = "${location.latitude},${location.longitude},${System.currentTimeMillis()}\n"
+        FileOutputStream(file, true).use {
+            it.write(line.toByteArray())
         }
     }
 
-    private fun sendLocationToServer(location: Location) {
+    private fun postLocation(location: Location) {
         Thread {
             try {
                 val url = URL("https://melipos.com/location_receiver/konum.php")
-                val postData = "lat=${location.latitude}&lon=${location.longitude}"
+                val data = "lat=${location.latitude}&lon=${location.longitude}"
+
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.doOutput = true
-                conn.outputStream.write(postData.toByteArray())
-                conn.outputStream.flush()
+                conn.outputStream.write(data.toByteArray())
                 conn.outputStream.close()
                 conn.inputStream.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            } catch (_: Exception) {}
         }.start()
     }
 
