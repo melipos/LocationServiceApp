@@ -1,14 +1,17 @@
 package com.example.locationservice
 
+import android.Manifest
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import java.io.File
@@ -26,7 +29,10 @@ class LocationService : Service() {
         createNotificationChannel()
         startForegroundServiceNotification()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // Battery optimizations ignore isteği (PowerManager)
         requestIgnoreBatteryOptimizations()
+
         startLocationUpdates()
     }
 
@@ -46,7 +52,7 @@ class LocationService : Service() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Konum Servisi")
             .setContentText("Konum servisiniz çalışıyor")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // sistem ikonu
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // Sistem ikonu
             .setOngoing(true)
             .build()
         startForeground(1, notification)
@@ -69,6 +75,18 @@ class LocationService : Service() {
             interval = 5000
             fastestInterval = 3000
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
         }
 
         fusedLocationClient.requestLocationUpdates(
@@ -99,7 +117,7 @@ class LocationService : Service() {
     private fun sendLocationToServer(location: Location) {
         Thread {
             try {
-                val url = URL("https://melipos.com/location_receive/konum.php")
+                val url = URL("https://melipos.com/location_receive/konum.php") // Kendi URL’in
                 val postData = "lat=${location.latitude}&lon=${location.longitude}"
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
