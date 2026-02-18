@@ -1,37 +1,43 @@
 package com.example.locationservice
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import android.provider.Settings
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
-    private lateinit var webView: WebView
+    private lateinit var googleMap: GoogleMap
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        // 🔹 WebView oluştur (beyaz ekran yerine)
-        webView = WebView(this)
-        setContentView(webView)
-
-        webView.webViewClient = WebViewClient()
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        // Map init
+        val mapFragment = supportFragmentManager
+            .findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
 
         requestPermissions()
+    }
+
+    override fun onMapReady(map: GoogleMap) {
+        googleMap = map
+        googleMap.uiSettings.isZoomControlsEnabled = true
+
+        if (hasLocationPermission()) {
+            enableLocationOnMap()
+        }
     }
 
     private fun requestPermissions() {
@@ -51,36 +57,50 @@ class MainActivity : AppCompatActivity() {
             ActivityResultContracts.RequestMultiplePermissions()
         ) { result ->
             if (result.values.all { it }) {
-                startTracking()
+                startEverything()
             }
         }
 
-        val needRequest = permissions.any {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (needRequest) {
+        if (permissions.any {
+                ContextCompat.checkSelfPermission(this, it)
+                != PackageManager.PERMISSION_GRANTED
+            }) {
             launcher.launch(permissions.toTypedArray())
         } else {
-            startTracking()
+            startEverything()
         }
     }
 
-    private fun startTracking() {
-        // 🔹 Foreground service başlat
+    private fun startEverything() {
+        enableLocationOnMap()
+
         startForegroundService(
             Intent(this, LocationService::class.java)
         )
+    }
 
-        // 🔹 Cihaza özel UID
-        val uid = Settings.Secure.getString(
-            contentResolver,
-            Settings.Secure.ANDROID_ID
-        )
+    private fun enableLocationOnMap() {
+        if (!hasLocationPermission()) return
 
-        // 🔹 Haritayı yükle
-        webView.loadUrl(
-            "https://melipos.com/location_receiver/map.html?uid=$uid"
-        )
+        try {
+            googleMap.isMyLocationEnabled = true
+
+            val fused = LocationServices.getFusedLocationProviderClient(this)
+            fused.lastLocation.addOnSuccessListener { location ->
+                location?.let {
+                    val latLng = LatLng(it.latitude, it.longitude)
+                    googleMap.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(latLng, 17f)
+                    )
+                }
+            }
+        } catch (_: SecurityException) { }
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 }
