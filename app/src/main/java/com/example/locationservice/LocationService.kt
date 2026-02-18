@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
@@ -14,7 +15,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import android.util.Log
 
 class LocationService : Service() {
 
@@ -24,13 +24,8 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        // --- Foreground notification ---
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Konum Servisi",
-                NotificationManager.IMPORTANCE_LOW
-            )
+            val channel = NotificationChannel(channelId, "Konum Servisi", NotificationManager.IMPORTANCE_LOW)
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
@@ -42,13 +37,9 @@ class LocationService : Service() {
             .setOngoing(true)
             .build()
 
-        // --- Runtime izin kontrolü ---
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.FOREGROUND_SERVICE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
             stopSelf()
             return
         }
@@ -66,15 +57,8 @@ class LocationService : Service() {
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
 
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return
         }
 
@@ -83,8 +67,8 @@ class LocationService : Service() {
             object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
                     result.locations.forEach { location ->
-                        saveLocationToFile(location)   
-                        sendLocationToServer(location) // POST artık doğru klasöre gidiyor
+                        saveLocationToFile(location)
+                        sendLocationToServer(location)
                     }
                 }
             },
@@ -94,13 +78,11 @@ class LocationService : Service() {
 
     private fun saveLocationToFile(location: Location) {
         try {
-            // Private storage’da txt oluşturur, uygulama kendisi görebilir
-            val file = File(filesDir, "location.txt")
+            val file = File(filesDir, "location.txt") // Private storage, görünürlük şart değil
             val output = FileOutputStream(file, true)
             output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
             output.close()
-
-            Log.d("LocationService", "location.txt path: ${file.absolutePath}")
+            Log.d("LocationService", "location.txt oluşturuldu: ${file.absolutePath}")
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -109,8 +91,7 @@ class LocationService : Service() {
     private fun sendLocationToServer(location: Location) {
         Thread {
             try {
-                // ✅ DİKKAT: Burada sunucu klasör adı doğru yazıldı
-                val url = URL("https://melipos.com/location_receiver/konum.php") // kendi sunucu URL’in
+                val url = URL("https://melipos.com/location_receiver/konum.php")
                 val postData = "lat=${location.latitude}&lon=${location.longitude}"
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
