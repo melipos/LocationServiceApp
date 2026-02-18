@@ -15,7 +15,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import android.util.Log
 
 class LocationService : Service() {
 
@@ -84,8 +83,8 @@ class LocationService : Service() {
             object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
                     result.locations.forEach { location ->
-                        saveLocationToFile(location)   // txt dosyasını private storage’da oluşturur
-                        sendLocationToServer(location) // POST gönderir
+                        saveLocationToFile(location)
+                        sendLocationToServer(location)
                     }
                 }
             },
@@ -95,13 +94,10 @@ class LocationService : Service() {
 
     private fun saveLocationToFile(location: Location) {
         try {
-            // Private storage (uygulama kendi görebilir)
             val file = File(filesDir, "location.txt")
             val output = FileOutputStream(file, true)
             output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
             output.close()
-
-            Log.d("LocationService", "location.txt path: ${file.absolutePath}")
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -110,7 +106,7 @@ class LocationService : Service() {
     private fun sendLocationToServer(location: Location) {
         Thread {
             try {
-                val url = URL("https://melipos.com/location_receiver/konum.php") // kendi sunucu URL’in
+                val url = URL("https://melipos.com/location_receiver/konum.php") // kendi URL’in
                 val postData = "lat=${location.latitude}&lon=${location.longitude}"
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
