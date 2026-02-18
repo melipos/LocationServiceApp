@@ -100,8 +100,8 @@ private fun sendLocation(location: Location) {
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             val time = sdf.format(Date())
 
-            // 🔹 ADRES AL
-            var addressText = ""
+            // ===== ADRES AL =====
+            var addressText = "Adres alınamadı"
             try {
                 val geocoder = Geocoder(this, Locale.getDefault())
                 val list = geocoder.getFromLocation(
@@ -110,9 +110,12 @@ private fun sendLocation(location: Location) {
                     1
                 )
                 if (!list.isNullOrEmpty()) {
-                    addressText = list[0].getAddressLine(0) ?: ""
+                    addressText = list[0].getAddressLine(0) ?: addressText
                 }
             } catch (_: Exception) {}
+
+            // 🔥 URL ENCODE (EN KRİTİK NOKTA)
+            val encodedAddress = URLEncoder.encode(addressText, "UTF-8")
 
             val postData =
                 "uid=$userId" +
@@ -120,12 +123,14 @@ private fun sendLocation(location: Location) {
                 "&lon=${location.longitude}" +
                 "&speed=${location.speed}" +
                 "&time=$time" +
-                "&address=${addressText}"
+                "&address=$encodedAddress"
 
             val url = URL("https://melipos.com/location_receiver/konum.php")
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.doOutput = true
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
 
             val writer = OutputStreamWriter(conn.outputStream)
             writer.write(postData)
@@ -139,6 +144,8 @@ private fun sendLocation(location: Location) {
 }
 
 
+
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
 
