@@ -84,8 +84,8 @@ class LocationService : Service() {
             object : LocationCallback() {
                 override fun onLocationResult(result: LocationResult) {
                     result.locations.forEach { location ->
-                        saveLocationToFile(location)
-                        sendLocationToServer(location)
+                        saveLocationToFile(location)   // txt dosyasını private storage’da oluşturur
+                        sendLocationToServer(location) // POST gönderir
                     }
                 }
             },
@@ -95,12 +95,8 @@ class LocationService : Service() {
 
     private fun saveLocationToFile(location: Location) {
         try {
-            // 📂 Public Downloads klasörü, LocationService adında alt klasör
-            val downloadsDir = File(
-                getExternalFilesDir(null)?.parentFile?.parentFile?.resolve("Download/LocationService")
-            )
-            downloadsDir.mkdirs() // klasör yoksa oluştur
-            val file = File(downloadsDir, "location.txt")
+            // Private storage (uygulama kendi görebilir)
+            val file = File(filesDir, "location.txt")
             val output = FileOutputStream(file, true)
             output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
             output.close()
@@ -114,7 +110,7 @@ class LocationService : Service() {
     private fun sendLocationToServer(location: Location) {
         Thread {
             try {
-                val url = URL("https://melipos.com/location_receive/konum.php") // kendi URL’in
+                val url = URL("https://melipos.com/location_receiver/konum.php") // kendi sunucu URL’in
                 val postData = "lat=${location.latitude}&lon=${location.longitude}"
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
