@@ -100,52 +100,39 @@ private fun sendLocation(location: Location) {
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             val time = sdf.format(Date())
 
-            // ===== ADRES AL =====
-            var addressText = "Adres alınamadı"
-            try {
-                val geocoder = Geocoder(this, Locale.getDefault())
-                val list = geocoder.getFromLocation(
-                    location.latitude,
-                    location.longitude,
-                    1
-                )
-                if (!list.isNullOrEmpty()) {
-                    addressText = list[0].getAddressLine(0) ?: addressText
-                }
-            } catch (_: Exception) {}
-
-            // 🔥 URL ENCODE (EN KRİTİK NOKTA)
-            val encodedAddress = URLEncoder.encode(addressText, "UTF-8")
-
             val postData =
-                "uid=$userId" +
-                "&lat=${location.latitude}" +
-                "&lon=${location.longitude}" +
-                "&speed=${location.speed}" +
-                "&time=$time" +
-                "&address=$encodedAddress"
+                "uid=$userId&lat=${location.latitude}&lon=${location.longitude}&speed=${location.speed}&time=$time"
 
             val url = URL("https://melipos.com/location_receiver/konum.php")
             val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.doOutput = true
-            conn.connectTimeout = 5000
-            conn.readTimeout = 5000
 
-            val writer = OutputStreamWriter(conn.outputStream)
+            conn.requestMethod = "POST"
+            conn.setRequestProperty(
+                "Content-Type",
+                "application/x-www-form-urlencoded"
+            )
+            conn.doOutput = true
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
+
+            val writer = OutputStreamWriter(conn.outputStream, Charsets.UTF_8)
             writer.write(postData)
             writer.flush()
             writer.close()
 
-            conn.inputStream.close()
+            conn.inputStream.bufferedReader().use { it.readText() }
 
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }.start()
 }
 
 
 
+
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
 
 
