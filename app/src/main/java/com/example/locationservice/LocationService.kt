@@ -2,7 +2,6 @@ package com.example.locationservice
 
 import android.app.*
 import android.content.Intent
-import android.location.Geocoder
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
@@ -12,7 +11,6 @@ import com.google.android.gms.location.*
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -73,66 +71,30 @@ class LocationService : Service() {
         )
     }
 
-    private fun getAddress(lat: Double, lon: Double): String {
-        return try {
-            val geocoder = Geocoder(this, Locale("tr"))
-            val list = geocoder.getFromLocation(lat, lon, 1)
+    private fun sendLocation(location: Location) {
+        Thread {
+            try {
+                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                val time = sdf.format(Date())
 
-            if (!list.isNullOrEmpty()) {
-                val a = list[0]
-                listOfNotNull(
-                    a.thoroughfare,
-                    a.subThoroughfare,
-                    a.subLocality,
-                    a.locality
-                ).joinToString(", ")
-            } else {
-                ""
+                val postData =
+                    "uid=$userId&lat=${location.latitude}&lon=${location.longitude}&speed=${location.speed}&time=$time"
+
+                val url = URL("https://melipos.com/location_receiver/konum.php")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doOutput = true
+
+                val writer = OutputStreamWriter(conn.outputStream)
+                writer.write(postData)
+                writer.flush()
+                writer.close()
+
+                conn.inputStream.close()
+            } catch (_: Exception) {
             }
-        } catch (e: Exception) {
-            ""
-        }
+        }.start()
     }
-
-private fun sendLocation(location: Location) {
-    Thread {
-        try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            val time = sdf.format(Date())
-
-            val postData =
-                "uid=$userId&lat=${location.latitude}&lon=${location.longitude}&speed=${location.speed}&time=$time"
-
-            val url = URL("https://melipos.com/location_receiver/konum.php")
-            val conn = url.openConnection() as HttpURLConnection
-
-            conn.requestMethod = "POST"
-            conn.setRequestProperty(
-                "Content-Type",
-                "application/x-www-form-urlencoded"
-            )
-            conn.doOutput = true
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-
-            val writer = OutputStreamWriter(conn.outputStream, Charsets.UTF_8)
-            writer.write(postData)
-            writer.flush()
-            writer.close()
-
-            conn.inputStream.bufferedReader().use { it.readText() }
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }.start()
-}
-
-
-
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
-
-
-
