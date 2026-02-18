@@ -94,42 +94,51 @@ class LocationService : Service() {
         }
     }
 
-    private fun sendLocation(location: Location) {
-        Thread {
+private fun sendLocation(location: Location) {
+    Thread {
+        try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val time = sdf.format(Date())
+
+            // 🔹 ADRES AL
+            var addressText = ""
             try {
-                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                val time = sdf.format(Date())
-
-                val address = getAddress(
+                val geocoder = Geocoder(this, Locale.getDefault())
+                val list = geocoder.getFromLocation(
                     location.latitude,
-                    location.longitude
+                    location.longitude,
+                    1
                 )
+                if (!list.isNullOrEmpty()) {
+                    addressText = list[0].getAddressLine(0) ?: ""
+                }
+            } catch (_: Exception) {}
 
-                val postData =
-                    "uid=$userId" +
-                    "&lat=${location.latitude}" +
-                    "&lon=${location.longitude}" +
-                    "&speed=${location.speed}" +
-                    "&time=$time" +
-                    "&address=${URLEncoder.encode(address, "UTF-8")}"
+            val postData =
+                "uid=$userId" +
+                "&lat=${location.latitude}" +
+                "&lon=${location.longitude}" +
+                "&speed=${location.speed}" +
+                "&time=$time" +
+                "&address=${addressText}"
 
-                val url = URL("https://melipos.com/location_receiver/konum.php")
-                val conn = url.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.doOutput = true
-                conn.connectTimeout = 5000
-                conn.readTimeout = 5000
+            val url = URL("https://melipos.com/location_receiver/konum.php")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
 
-                val writer = OutputStreamWriter(conn.outputStream)
-                writer.write(postData)
-                writer.flush()
-                writer.close()
+            val writer = OutputStreamWriter(conn.outputStream)
+            writer.write(postData)
+            writer.flush()
+            writer.close()
 
-                conn.inputStream.close()
-            } catch (_: Exception) {
-            }
-        }.start()
-    }
+            conn.inputStream.close()
+
+        } catch (_: Exception) {}
+    }.start()
+}
+
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
