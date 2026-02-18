@@ -1,103 +1,114 @@
 package com.example.locationservice
 
-import android.app.Service
+import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.location.Location
+import android.net.Uri
+import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import android.os.Looper
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
+import java.io.File
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.concurrent.thread
 
 class LocationService : Service() {
 
-    private lateinit var fusedClient: FusedLocationProviderClient
-    private lateinit var callback: LocationCallback
-
-    private val SERVER_URL = "https://melipos.com/location_receiver/konum.php"
-
-    private var lastLocation: Location? = null
-    private var lastMoveTime = System.currentTimeMillis()
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val channelId = "LocationServiceChannel"
 
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
+        startForegroundServiceNotification()
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        startLocationUpdates()
+    }
 
-        fusedClient = LocationServices.getFusedLocationProviderClient(this)
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Konum Servisi",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+    }
 
-        val request = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            10000
-        ).build()
+    private fun startForegroundServiceNotification() {
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Konum Servisi")
+            .setContentText("Konum servisiniz çalışıyor")
+            .setSmallIcon(R.drawable.ic_location)
+            .setOngoing(true)
+            .build()
+        startForeground(1, notification)
+    }
 
-        callback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                val location = result.lastLocation ?: return
-                processLocation(location)
+    private fun startLocationUpdates() {
+        val locationRequest = LocationRequest.create().apply {
+            interval = 5000
+            fastestInterval = 3000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+
+        // Battery optimization ignore
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                intent.data = Uri.parse("package:$packageName")
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(intent)
             }
         }
 
-        fusedClient.requestLocationUpdates(request, callback, mainLooper)
-    }
-
-    private fun processLocation(loc: Location) {
-        val lat = loc.latitude
-        val lon = loc.longitude
-        val speed = loc.speed   // m/s
-
-        var isStop = 0
-
-        if (speed < 0.5) {
-            if (System.currentTimeMillis() - lastMoveTime > 120000) {
-                isStop = 1
-            }
-        } else {
-            lastMoveTime = System.currentTimeMillis()
-        }
-
-        lastLocation = loc
-        sendToServer(lat, lon, speed, isStop)
-    }
-
-    private fun sendToServer(
-        lat: Double,
-        lon: Double,
-        speed: Float,
-        isStop: Int
-    ) {
-        thread {
-            try {
-                val url = URL(SERVER_URL)
-                val conn = url.openConnection() as HttpURLConnection
-
-                conn.requestMethod = "POST"
-                conn.setRequestProperty(
-                    "Content-Type",
-                    "application/x-www-form-urlencoded"
-                )
-                conn.doOutput = true
-                conn.connectTimeout = 10000
-                conn.readTimeout = 10000
-
-                val postData =
-                    "lat=$lat&lon=$lon&speed=$speed&stop=$isStop"
-
-                conn.outputStream.use {
-                    it.write(postData.toByteArray())
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    result.locations.forEach { location ->
+                        saveLocationToFile(location)
+                        sendLocationToServer(location)  // Sunucuya POST
+                    }
                 }
+            },
+            Looper.getMainLooper()
+        )
+    }
 
-                Log.d("LocationService", "POST OK ${conn.responseCode}")
-                conn.disconnect()
-
-            } catch (e: Exception) {
-                Log.e("LocationService", "POST ERROR", e)
-            }
+    private fun saveLocationToFile(location: Location) {
+        try {
+            val file = File(filesDir, "location.txt")
+            val output = FileOutputStream(file, true)
+            output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
+            output.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
-    override fun onDestroy() {
-        fusedClient.removeLocationUpdates(callback)
-        super.onDestroy()
+    private fun sendLocationToServer(location: Location) {
+        Thread {
+            try {
+                val url = URL("https://melipos.com/location_receiver/konum.php") // kendi URL’in
+                val postData = "lat=${location.latitude}&lon=${location.longitude}"
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doOutput = true
+                conn.outputStream.write(postData.toByteArray())
+                conn.outputStream.flush()
+                conn.outputStream.close()
+                conn.inputStream.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }.start()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
