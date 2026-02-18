@@ -8,13 +8,13 @@ import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import android.os.PowerManager
 
 class LocationService : Service() {
 
@@ -26,6 +26,7 @@ class LocationService : Service() {
         createNotificationChannel()
         startForegroundServiceNotification()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        requestIgnoreBatteryOptimizations()
         startLocationUpdates()
     }
 
@@ -45,20 +46,13 @@ class LocationService : Service() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Konum Servisi")
             .setContentText("Konum servisiniz çalışıyor")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // sistem ikonu
             .setOngoing(true)
             .build()
         startForeground(1, notification)
     }
 
-    private fun startLocationUpdates() {
-        val locationRequest = LocationRequest.create().apply {
-            interval = 5000
-            fastestInterval = 3000
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        }
-
-        // Battery optimization ignore
+    private fun requestIgnoreBatteryOptimizations() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             if (!pm.isIgnoringBatteryOptimizations(packageName)) {
@@ -68,6 +62,14 @@ class LocationService : Service() {
                 startActivity(intent)
             }
         }
+    }
+
+    private fun startLocationUpdates() {
+        val locationRequest = LocationRequest.create().apply {
+            interval = 5000
+            fastestInterval = 3000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
 
         fusedLocationClient.requestLocationUpdates(
             locationRequest,
@@ -75,7 +77,7 @@ class LocationService : Service() {
                 override fun onLocationResult(result: LocationResult) {
                     result.locations.forEach { location ->
                         saveLocationToFile(location)
-                        sendLocationToServer(location)  // Sunucuya POST
+                        sendLocationToServer(location)
                     }
                 }
             },
@@ -97,7 +99,7 @@ class LocationService : Service() {
     private fun sendLocationToServer(location: Location) {
         Thread {
             try {
-                val url = URL("https://melipos.com/location_receiver/konum.php") // kendi URL’in
+                val url = URL("https://melipos.com/location_receive/konum.php")
                 val postData = "lat=${location.latitude}&lon=${location.longitude}"
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
@@ -114,5 +116,3 @@ class LocationService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
-
-
