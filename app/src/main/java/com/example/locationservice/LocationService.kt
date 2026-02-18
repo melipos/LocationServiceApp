@@ -92,16 +92,18 @@ class LocationService : Service() {
         )
     }
 
-    private fun saveLocationToFile(location: Location) {
-        try {
-            val file = File(filesDir, "location.txt")
-            val output = FileOutputStream(file, true)
-            output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
-            output.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+private fun saveLocationToFile(location: Location) {
+    try {
+        val downloads = getExternalFilesDir(null) ?: filesDir
+        val file = File(downloads, "location.txt")
+        val output = FileOutputStream(file, true)
+        output.write("${location.latitude},${location.longitude},${System.currentTimeMillis()}\n".toByteArray())
+        output.close()
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
+}
+
 
     private fun sendLocationToServer(location: Location) {
         Thread {
@@ -123,3 +125,4 @@ class LocationService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
